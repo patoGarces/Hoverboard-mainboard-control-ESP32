@@ -1,14 +1,17 @@
+#ifndef __CAN_COMMS_H__
+#define __CAN_COMMS_H__
+
 #include "driver/gpio.h"
 #include "driver/uart.h"
 
 
-enum{
-    ENABLE_MOTORS,
-    DISABLE_MOTORS,
-    POWER_OFF,
-    POWER_ON
+// enum{
+//     ENABLE_MOTORS,
+//     DISABLE_MOTORS,
+//     POWER_OFF,
+//     POWER_ON
 
-} ordenCode;
+// } ordenCodeEnum;
 
 typedef struct{
     uint16_t    start;
@@ -40,3 +43,5 @@ rx_motor_control_board_t;
 void canInit(uint8_t txPin,uint8_t rxPin,uart_port_t portUart);
 void sendMotorData(int16_t motR,int16_t motL,uint8_t enable,uint8_t ordenCode);
 // void readMotorData();
+
+#endif
