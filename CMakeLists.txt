@@ -1,3 +1,3 @@
-idf_component_register(SRCS "CAN_MCB.c"
+idf_component_register(SRCS
                     INCLUDE_DIRS "include"
 			        REQUIRES driver)

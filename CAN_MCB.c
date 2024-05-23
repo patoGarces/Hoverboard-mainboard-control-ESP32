@@ -7,6 +7,7 @@ config_init_mcb_t mcbConfigInit;
 rx_motor_control_board_t motorControlBoard;
 
 static void sendMotorData(int16_t motR,int16_t motL,uint8_t enable);
+static void readMotorData();
 
 static void controlHandler(void *pvParameters) {
     output_motors_t newVel;
@@ -14,10 +15,11 @@ static void controlHandler(void *pvParameters) {
     queueMotorControl = xQueueCreate(1,sizeof(output_motors_t));
 
     while(true) {
+        readMotorData();
         if (xQueueReceive(queueMotorControl,&newVel,pdMS_TO_TICKS(1))) {
             sendMotorData(newVel.motorR,newVel.motorL,newVel.enable);
         }
-        // vTaskDelay(pdMS_TO_TICKS(50));
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 }
 
@@ -84,33 +86,64 @@ void sendMotorData(int16_t motR,int16_t motL,uint8_t enable){
         .steer = motR,
         .checksum = calcChecksum
     };
-    if (uart_write_bytes(mcbConfigInit.numUart,&command,sizeof(command)) >=0 ) {
-        printf("Send MCB OK\n");
-    }
-    else {
-        printf("Send MCB ERROR\n");
-    }
-    printf("speedL: %d, speedR(steer): %d\n",command.speed,command.steer);
+
+    uart_write_bytes(mcbConfigInit.numUart,&command,sizeof(command));
+    // printf("speedL: %d, speedR(steer): %d\n",command.speed,command.steer);
 }
 
-void readMotorData(){
-    rx_motor_control_board_t rxData;
+typedef struct{
+  uint16_t  start;
+  int16_t   cmd1;
+  int16_t   cmd2;
+  int16_t   speedR_meas;
+  int16_t   speedL_meas;
+  int16_t   batVoltage;
+  int16_t   boardTemp;
+  uint16_t  cmdLed;
+  uint16_t  checksum;
+} SerialFeedback;
+
+static void readMotorData() {
+    // rx_motor_control_board_t rxData;
+    // uint16_t newChecksum = 0,lentghRx = 0;
+
+    // ESP_ERROR_CHECK(uart_get_buffered_data_len(mcbConfigInit.numUart, (size_t*)&lentghRx));
+
+    // if(lentghRx >= sizeof(rx_motor_control_board_t)){
+    //     uart_read_bytes(mcbConfigInit.numUart, &rxData, lentghRx, 100);
+
+    //     if( rxData.start == START_CODE_HEADER && rxData.idModule == ID_MOTOR_MODULE){
+
+    //         newChecksum = (uint16_t)(rxData.start ^ rxData.idModule ^ rxData.speedL ^ rxData.speedR  ^ rxData.batVoltage ^ rxData.tempUc ^ rxData.ordenCode ^ rxData.errorCode ^ rxData.status );
+            
+    //         if( newChecksum == rxData.checksum){
+    //             memcpy(&motorControlBoard,&rxData,sizeof(rx_motor_control_board_t));
+    //             printf("Data nueva copiada: %d",motorControlBoard.status);
+    //         }
+    //     }
+    // }
+    // uart_flush(mcbConfigInit.numUart);                                  // limpio lo remanente
+
+    // SerialFeedback rxData;
+    uint8_t rxData[100];
     uint16_t newChecksum = 0,lentghRx = 0;
 
     ESP_ERROR_CHECK(uart_get_buffered_data_len(mcbConfigInit.numUart, (size_t*)&lentghRx));
 
-    if(lentghRx >= sizeof(rx_motor_control_board_t)){
-        uart_read_bytes(mcbConfigInit.numUart, &rxData, lentghRx, 100);
+    if(lentghRx >= sizeof(SerialFeedback)){
+        uart_read_bytes(mcbConfigInit.numUart, &rxData, lentghRx, 1000);
 
-        if( rxData.start == START_CODE_HEADER && rxData.idModule == ID_MOTOR_MODULE){
+        // if( rxData.start == START_CODE_HEADER) {
 
-            newChecksum = (uint16_t)(rxData.start ^ rxData.idModule ^ rxData.speedL ^ rxData.speedR  ^ rxData.batVoltage ^ rxData.tempUc ^ rxData.ordenCode ^ rxData.errorCode ^ rxData.status );
-            
-            if( newChecksum == rxData.checksum){
-                memcpy(&motorControlBoard,&rxData,sizeof(rx_motor_control_board_t));
-                printf("Data nueva copiada: %d",motorControlBoard.status);
-            }
-        }
+        //     newChecksum = (uint16_t)(rxData.start ^ rxData.cmd1 ^ rxData.cmd2 ^ rxData.speedR_meas ^ rxData.speedL_meas 
+        //                                    ^ rxData.batVoltage ^ rxData.boardTemp ^ rxData.cmdLed);
+        //     if( newChecksum == rxData.checksum){
+        //         // memcpy(&motorControlBoard,&rxData,sizeof(SerialFeedback));
+        //         // printf("Data nueva copiada: %d",motorControlBoard.status);
+
+        //         printf("Nuevo paquete OK -> voltage: %d\tspeedL: %d\tspeedR:%d\n",rxData.batVoltage,rxData.speedL_meas,rxData.speedR_meas);
+        //     }
+        // }
+        uart_flush(mcbConfigInit.numUart);                                  // limpio lo remanente
     }
-    uart_flush(mcbConfigInit.numUart);                                  // limpio lo remanente
 }
