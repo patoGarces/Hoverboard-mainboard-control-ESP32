@@ -1,5 +1,5 @@
-#ifndef CAN_MCBS_H
-#define CAN_MCBS_H
+#ifndef CAN_MCB_H
+#define CAN_MCB_H
 
 #include <stdio.h>
 #include "driver/gpio.h"
