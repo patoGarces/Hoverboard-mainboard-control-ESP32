@@ -5,7 +5,7 @@
 #include "driver/gpio.h"
 #include "driver/uart.h"
 
-#define MAINBOARD_BAUDATE   115200
+#define MAINBOARD_BAUDRATE   230400
 
 #define START_CODE_HEADER   0xABCD
 #define ID_MOTOR_MODULE     0xF0
