@@ -16,6 +16,7 @@ typedef struct {
     gpio_num_t txPin;
     gpio_num_t rxPin;
     uart_port_t numUart;
+    uint8_t core;
 }config_init_mcb_t;
 
 typedef struct {
@@ -29,17 +30,30 @@ typedef struct {
 } tx_motor_control_board_t;
 
 typedef struct {
-	uint16_t    start;
-	uint16_t     idModule;
-    int16_t     speedR;
-    int16_t     speedL;
-    uint16_t    batVoltage;
-    uint16_t    tempUc;
-    uint16_t    status;
-    uint8_t     ordenCode;
-    uint8_t     errorCode;
-    uint16_t    checksum;
+	// uint16_t    start;
+	// uint16_t     idModule;
+    // int16_t     speedR;
+    // int16_t     speedL;
+    // uint16_t    batVoltage;
+    // uint16_t    tempUc;
+    // uint16_t    status;
+    // uint8_t     ordenCode;
+    // uint8_t     errorCode;
+    // uint16_t    checksum;
+
+    uint16_t  start;
+    int16_t   cmd1;
+    int16_t   cmd2;
+    int16_t   speedR_meas;
+    int16_t   speedL_meas;
+    int16_t   batVoltage;
+    int16_t   boardTemp;
+    uint16_t  cmdLed;
+    uint16_t  checksum;
 } rx_motor_control_board_t;
+
+
+
 
 void mcbInit(config_init_mcb_t *config);
 void mcbReadData();

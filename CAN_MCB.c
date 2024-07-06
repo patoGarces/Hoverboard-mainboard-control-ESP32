@@ -1,12 +1,17 @@
 #include "include/CAN_MCB.h"
 #include "string.h"
 #include "../../../include/main.h"              // TODO: mirar este def
+#include "esp_log.h"
 
 extern QueueSetHandle_t queueMotorControl; 
 config_init_mcb_t mcbConfigInit;
 rx_motor_control_board_t motorControlBoard;
 
 static QueueHandle_t spp_uart_queue;
+
+const char *TAG = "CAN_MCB";
+
+#define PATTERN_CHR_NUM 1
 
 static void sendMotorData(int16_t motR,int16_t motL,uint8_t enable);
 
@@ -60,9 +65,9 @@ typedef struct{
   uint16_t  checksum;
 } SerialFeedback;
 
-static void processMCBData(uint8_t *data,uint8_t length) {
-    // rx_motor_control_board_t rxData;
-    // uint16_t newChecksum = 0,lentghRx = 0;
+static void processMCBData(uint8_t *data) {
+    rx_motor_control_board_t rxData;
+    uint16_t newChecksum = 0,lentghRx = 0;
 
     // ESP_ERROR_CHECK(uart_get_buffered_data_len(mcbConfigInit.numUart, (size_t*)&lentghRx));
 
@@ -79,44 +84,27 @@ static void processMCBData(uint8_t *data,uint8_t length) {
     //         }
     //     }
     // }
-    // uart_flush(mcbConfigInit.numUart);                                  // limpio lo remanente
+
 
     SerialFeedback MCBPacket;
-    // uint8_t rxData[100];
-    // uint16_t newChecksum = 0,lentghRx = 0;
+    memcpy(&MCBPacket,data,sizeof(SerialFeedback));
+    // printf("Data leida: start: %x, cmd1: %x, cmd2: %x, spdL: %x, spdR: %x, %x, %x, %x, %x\n",MCBPacket.start,MCBPacket.cmd1,MCBPacket.cmd2,MCBPacket.speedR_meas,MCBPacket.speedL_meas,MCBPacket.batVoltage,MCBPacket.boardTemp,MCBPacket.cmdLed,MCBPacket.checksum);
+    // printf("start struct: %02X\n",MCBPacket.start);
 
-    // printf("Leo buffer uart rx\n");
-    // ESP_ERROR_CHECK(uart_get_buffered_data_len(mcbConfigInit.numUart, (size_t*)&lentghRx));
-    // printf("FIN buffer uart rx\n");
-    
-    // printf("processing data length: %d\n",length);
-    if (length == sizeof(MCBPacket)) {
-        // printf("TAMAÑO CORRECTO DEL PAQUETE!\n");
-        memcpy(&MCBPacket,&data,sizeof(SerialFeedback));
+    if( MCBPacket.start == START_CODE_HEADER) {
 
-        printf("Data leida: %x, %x, %x, %x, %x, %x, %x, %x, %x\n",MCBPacket.start,MCBPacket.cmd1,MCBPacket.cmd2,MCBPacket.speedR_meas,MCBPacket.speedL_meas,MCBPacket.batVoltage,MCBPacket.boardTemp,MCBPacket.cmdLed,MCBPacket.checksum);
+        newChecksum = (uint16_t)(MCBPacket.start ^ MCBPacket.cmd1 ^ MCBPacket.cmd2 ^ MCBPacket.speedR_meas ^ MCBPacket.speedL_meas 
+                                       ^ MCBPacket.batVoltage ^ MCBPacket.boardTemp ^ MCBPacket.cmdLed);
+        if( newChecksum == MCBPacket.checksum){
+            // memcpy(&motorControlBoard,&MCBPacket,sizeof(SerialFeedback));
+            // printf("Data nueva copiada: %d",motorControlBoard.status);
+
+            printf("Nuevo paquete OK -> voltage: %d\tspeedL: %d\tspeedR:%d\n",MCBPacket.batVoltage,MCBPacket.speedL_meas,MCBPacket.speedR_meas);
+        }
+        else {
+            printf("error checksum\n");
+        }
     }
-    // 
-
-    // if(lentghRx >= sizeof(SerialFeedback)){
-    //     // uart_read_bytes(mcbConfigInit.numUart, &rxData, lentghRx, 1000);
-
-    //     if( rxData.start == START_CODE_HEADER) {
-
-    //         newChecksum = (uint16_t)(rxData.start ^ rxData.cmd1 ^ rxData.cmd2 ^ rxData.speedR_meas ^ rxData.speedL_meas 
-    //                                        ^ rxData.batVoltage ^ rxData.boardTemp ^ rxData.cmdLed);
-    //         if( newChecksum == rxData.checksum){
-    //             // memcpy(&motorControlBoard,&rxData,sizeof(SerialFeedback));
-    //             // printf("Data nueva copiada: %d",motorControlBoard.status);
-
-    //             printf("Nuevo paquete OK -> voltage: %d\tspeedL: %d\tspeedR:%d\n",rxData.batVoltage,rxData.speedL_meas,rxData.speedR_meas);
-    //         }
-    //         else {
-    //             printf("error checksum\n");
-    //         }
-    //     }
-    //     uart_flush(mcbConfigInit.numUart);                                  // limpio lo remanente
-    // }
 }
 
 
@@ -132,15 +120,84 @@ static void controlHandler(void *pvParameters) {
 
         if (xQueueReceive(spp_uart_queue, (void * )&event, 0)) {
             
-            if(event.type == UART_DATA) {
-                if (event.size) {
-                    // printf("Data recibida: %d\n",event.size);
-                    uint8_t length = uart_read_bytes(UART_NUM_2, data, event.size, 0);
-                    if (length > 0) {
-                        // Procesar los datos recibidos
-                        processMCBData(data, length);
-                    }
+            switch(event.type) {
+            //  case UART_DATA:
+            //     if (event.size) {
+            //         // printf("Data recibida: %d\n",event.size);
+            //         uint8_t length = uart_read_bytes(UART_NUM_2, data, event.size, 0);
+            //         printf("Data recibida: %d\n",length);
+            //         if (length >= sizeof(SerialFeedback) && data[0] == 0xcd) {
+            //             // Procesar los datos recibidos
+            //             printf("\nNuevo paquete:\n");
+            //             ESP_LOG_BUFFER_HEX(TAG, data, length);
+            //             processMCBData(data, length);
+            //         }
+            //         else {
+            //             uart_flush_input(UART_NUM_2);       // out of sync, limpio uart
+            //             printf("\nout of sync\n");
+            //         }
+            //     }
+            //     break;
+                 //Event of HW FIFO overflow detected
+            case UART_FIFO_OVF:
+                ESP_LOGI(TAG, "hw fifo overflow");
+                // If fifo overflow happened, you should consider adding flow control for your application.
+                // The ISR has already reset the rx FIFO,
+                // As an example, we directly flush the rx buffer here in order to read more data.
+                uart_flush_input(UART_NUM_2);
+                xQueueReset(spp_uart_queue);
+                break;
+            //Event of UART ring buffer full
+            case UART_BUFFER_FULL:
+                ESP_LOGI(TAG, "ring buffer full");
+                // If buffer full happened, you should consider increasing your buffer size
+                // As an example, we directly flush the rx buffer here in order to read more data.
+                uart_flush_input(UART_NUM_2);
+                xQueueReset(spp_uart_queue);
+                break;
+            //Event of UART RX break detected
+            case UART_BREAK:
+                ESP_LOGI(TAG, "uart rx break");
+                break;
+            //Event of UART parity check error
+            case UART_PARITY_ERR:
+                ESP_LOGI(TAG, "uart parity error");
+                break;
+            //Event of UART frame error
+            case UART_FRAME_ERR:
+                ESP_LOGI(TAG, "uart frame error");
+                break;
+            //UART_PATTERN_DET
+            case UART_PATTERN_DET:
+
+                size_t sizeBuffer;
+                uart_get_buffered_data_len(UART_NUM_2, &sizeBuffer);
+                if (sizeBuffer < sizeof(SerialFeedback)) { 
+                    break;                                                  // wait for the correct size
                 }
+                int pos = uart_pattern_pop_pos(UART_NUM_2);                 // get the position of the pattern
+                if (pos == -1) {
+                    // There used to be a UART_PATTERN_DET event, but the pattern position queue is full so that it can not
+                    // record the position. We should set a larger queue size.
+                    // As an example, we directly flush the rx buffer here.
+                    uart_flush_input(UART_NUM_2);
+                } else {
+                    uint8_t discard[50];         // TODO: mejorar metodo de descarte, estoy usando memoria inutilmente
+                    uart_read_bytes(UART_NUM_2, discard, pos,0);   // just to discard previous bytes
+                    uart_read_bytes(UART_NUM_2, data, sizeof(SerialFeedback),0);
+                    // printf("Data leida desde el pattern: ");
+                    // ESP_LOG_BUFFER_HEX(TAG, data, sizeof(data));
+
+                    // printf("Data limpia procesada: ");
+                    // ESP_LOG_BUFFER_HEX(TAG, data, sizeof(SerialFeedback));
+
+                    processMCBData(data);
+                    uart_flush_input(UART_NUM_2);
+                }
+                break;
+                default:
+                    ESP_LOGI(TAG, "unhandled event type: %d", event.type);
+                break;
             }
         }
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -195,7 +252,12 @@ void mcbInit(config_init_mcb_t *config) {
     // char* test_str = "This is a test string.\n";
     // uart_write_bytes(config->numUart,(const char*)test_str, strlen(test_str));
 
+    //Set uart pattern detect function.
+    uart_enable_pattern_det_baud_intr(UART_NUM_2, 0xCD, PATTERN_CHR_NUM, 9, 0, 0);
+    //Reset the pattern queue length to record at most 20 pattern positions.
+    uart_pattern_queue_reset(UART_NUM_2, 20);
+
     printf("\nMCB INIT\n");
 
-    xTaskCreate(controlHandler,"MCB handler task",4096,NULL,10,NULL);
+    xTaskCreatePinnedToCore(controlHandler,"MCB handler task",4096,NULL,10,NULL,config->core);
 }
