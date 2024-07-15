@@ -5,7 +5,8 @@
 
 #define PATTERN_QUEUE_SIZE  20
 
-extern QueueHandle_t queueMotorControl; 
+extern QueueHandle_t newMcbQueueHandler; 
+extern QueueHandle_t motorControlQueueHandler; 
 
 config_init_mcb_t mcbConfigInit;
 static QueueHandle_t spp_uart_queue;
@@ -38,8 +39,8 @@ static void processMCBData(uint8_t *data) {
         newChecksum = (uint16_t)(newMcbData.start ^ newMcbData.cmd1 ^ newMcbData.cmd2 ^ newMcbData.speedR_meas ^ newMcbData.speedL_meas 
                                        ^ newMcbData.batVoltage ^ newMcbData.boardTemp ^ newMcbData.cmdLed);
         if( newChecksum == newMcbData.checksum){
-            // printf("Nuevo paquete OK -> voltage: %d\tspeedL: %d\tspeedR:%d\n",newMcbData.batVoltage,newMcbData.speedL_meas,newMcbData.speedR_meas);
-            printf("Nuevo paquete OK -> voltage: %d\tposL: %d\tposR:%d\n",newMcbData.batVoltage,newMcbData.posL,newMcbData.posR);
+            // printf("Nuevo paquete OK -> voltage: %d\tposL: %ld\tposR:%ld\n",newMcbData.batVoltage,newMcbData.posL,newMcbData.posR);
+            xQueueSend(newMcbQueueHandler,&newMcbData,0);
         }
         // else {
         //     ESP_LOGI(TAG,"Error checksum");
@@ -53,7 +54,7 @@ static void controlHandler(void *pvParameters) {
     uint8_t data[100];
 
     while(true) {
-        if (xQueueReceive(queueMotorControl,&newVel,0)) {
+        if (xQueueReceive(motorControlQueueHandler,&newVel,0)) {
             sendMotorData(newVel.motorR,newVel.motorL,newVel.enable);
         }
 
@@ -150,6 +151,6 @@ void mcbInit(config_init_mcb_t *config) {
     //Reset the pattern queue length to record at most 20 pattern positions.
     uart_pattern_queue_reset(config->numUart, PATTERN_QUEUE_SIZE);
 
-    xTaskCreatePinnedToCore(controlHandler,"MCB handler task",4096,NULL,10,NULL,config->core);
+    xTaskCreatePinnedToCore(controlHandler,"MCB handler task",4096,NULL,10,NULL,config->core);      // TODO: pasar queue
     ESP_LOGI(TAG,"initialized");
 }

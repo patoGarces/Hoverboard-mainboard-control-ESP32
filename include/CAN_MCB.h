@@ -16,17 +16,11 @@ typedef struct {
     gpio_num_t txPin;
     gpio_num_t rxPin;
     uart_port_t numUart;
+    QueueHandle_t queue;
     uint8_t core;
 }config_init_mcb_t;
 
 typedef struct {
-    // uint16_t    start;
-    // uint16_t    idModule;       // Se trabaja con 2 bytes por problemas de alineacion si es solo 1 byte
-    // int16_t     motR;
-    // int16_t     motL;
-    // uint8_t     enable;
-    // uint8_t     ordenCode;
-    // uint16_t    checksum;
     uint16_t start;
     int16_t  speedR;
     int16_t  speedL;
@@ -51,8 +45,8 @@ typedef struct {
     int16_t   cmd2;
     int16_t   speedR_meas;
     int16_t   speedL_meas;
-    int16_t   posR;
-    int16_t   posL;
+    int32_t   posR;
+    int32_t   posL;
     int16_t   batVoltage;
     int16_t   boardTemp;
     uint16_t  cmdLed;
@@ -60,6 +54,5 @@ typedef struct {
 } rx_motor_control_board_t;
 
 void mcbInit(config_init_mcb_t *config);
-void mcbReadData();
 
 #endif
