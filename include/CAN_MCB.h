@@ -5,7 +5,7 @@
 #include "driver/gpio.h"
 #include "driver/uart.h"
 
-#define MAINBOARD_BAUDRATE          921600//230400
+#define MAINBOARD_BAUDRATE          921600      // 230400
 #define START_CODE_HEADER           0xABCD
 #define START_CODE_HEADER_PATTERN   0xCD        // just one byte pattern, litle endian
 #define ID_MOTOR_MODULE     0xF0
@@ -29,17 +29,6 @@ typedef struct {
 } tx_motor_control_board_t;
 
 typedef struct {
-	// uint16_t    start;
-	// uint16_t     idModule;
-    // int16_t     speedR;
-    // int16_t     speedL;
-    // uint16_t    batVoltage;
-    // uint16_t    tempUc;
-    // uint16_t    status;
-    // uint8_t     ordenCode;
-    // uint8_t     errorCode;
-    // uint16_t    checksum;
-
     uint16_t  start;
     int16_t   cmd1;
     int16_t   cmd2;
@@ -51,6 +40,9 @@ typedef struct {
     int16_t   boardTemp;
     uint16_t  cmdLed;
     uint16_t  checksum;
+
+    // uint8_t     ordenCode;
+    // uint8_t     errorCode;
 } rx_motor_control_board_t;
 
 void mcbInit(config_init_mcb_t *config);

@@ -10,11 +10,9 @@ extern QueueHandle_t motorControlQueueHandler;
 
 config_init_mcb_t mcbConfigInit;
 static QueueHandle_t spp_uart_queue;
-const char *TAG = "CAN_MCB";
+static const char *TAG = "CAN_MCB";
 
-static void sendMotorData(int16_t motR,int16_t motL,uint8_t enable);
-
-void sendMotorData(int16_t motR,int16_t motL,uint8_t enable) {
+static void sendMotorData(int16_t motR,int16_t motL,uint8_t enable) {
     uint16_t calcChecksum = (START_CODE_HEADER)^(motL)^(motR);
     // uint16_t calcChecksum = (START_CODE_HEADER)^(ID_MOTOR_MODULE)^(cont)^(motL)^(enable)^(0x00);
     tx_motor_control_board_t command = {
